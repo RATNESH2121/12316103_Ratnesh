@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WealthBalance — Portfolio Rebalancer</title>
+  <meta name="description" content="Smart portfolio rebalancing tool to align your mutual fund investments with your target plan." />
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'core/style.css' %}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">₹</div>
+      <div>
+        <div class="brand-name">WealthBalance</div>
+        <div class="brand-sub">Portfolio Rebalancer</div>
+      </div>
+    </div>
+
+    <!-- Client Selector -->
+    <div class="client-section">
+      <label class="section-label">Client</label>
+      <select id="clientSelect" class="client-select">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav-menu">
+      <a class="nav-item active" data-screen="dashboard" href="#">
+        <span class="nav-icon">📊</span>
+        <span>Rebalancing</span>
+      </a>
+      <a class="nav-item" data-screen="holdings" href="#">
+        <span class="nav-icon">💼</span>
+        <span>Current Holdings</span>
+      </a>
+      <a class="nav-item" data-screen="history" href="#">
+        <span class="nav-icon">📜</span>
+        <span>History</span>
+      </a>
+      <a class="nav-item" data-screen="edit-plan" href="#">
+        <span class="nav-icon">✏️</span>
+        <span>Edit Plan</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="footer-text">Wealth Builder 2025</div>
+      <div class="footer-sub">Model Portfolio</div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- ── Screen 1: Dashboard ───────────────────────────────────────── -->
+    <div id="screen-dashboard" class="screen active">
+      <div class="screen-header">
+        <div>
+          <h1 class="screen-title">Portfolio Rebalancing</h1>
+          <p class="screen-subtitle">Compare current allocation vs target plan and get buy/sell recommendations</p>
+        </div>
+        <button id="btnSave" class="btn btn-primary" onclick="saveRecommendation()">
+          <span>💾</span> Save Recommendation
+        </button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div id="summaryCards" class="summary-cards">
+        <div class="card card-total">
+          <div class="card-label">Portfolio Value</div>
+          <div class="card-value" id="cardTotal">—</div>
+        </div>
+        <div class="card card-buy">
+          <div class="card-label">Total to BUY</div>
+          <div class="card-value" id="cardBuy">—</div>
+        </div>
+        <div class="card card-sell">
+          <div class="card-label">Total to SELL</div>
+          <div class="card-value" id="cardSell">—</div>
+        </div>
+        <div class="card card-fresh">
+          <div class="card-label">Fresh Money Needed</div>
+          <div class="card-value" id="cardFresh">—</div>
+        </div>
+      </div>
+
+      <!-- Toast -->
+      <div id="toast" class="toast hidden"></div>
+
+      <!-- Rebalance Table -->
+      <div class="table-wrapper">
+        <table class="data-table" id="rebalanceTable">
+          <thead>
+            <tr>
+              <th>Fund Name</th>
+              <th>Type</th>
+              <th>Plan %</th>
+              <th>Today %</th>
+              <th>Drift</th>
+              <th>Action</th>
+              <th>Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="rebalanceTbody">
+            <tr><td colspan="7" class="loading-cell">Loading recommendations...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Screen 2: Holdings ────────────────────────────────────────── -->
+    <div id="screen-holdings" class="screen">
+      <div class="screen-header">
+        <div>
+          <h1 class="screen-title">Current Investments</h1>
+          <p class="screen-subtitle">All mutual funds held by this client right now</p>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table" id="holdingsTable">
+          <thead>
+            <tr>
+              <th>Fund ID</th>
+              <th>Fund Name</th>
+              <th>Current Value (₹)</th>
+              <th>In Plan?</th>
+            </tr>
+          </thead>
+          <tbody id="holdingsTbody">
+            <tr><td colspan="4" class="loading-cell">Loading holdings...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="holdings-footer">
+        <span>Total Portfolio Value:</span>
+        <span id="holdingsTotal" class="holdings-total-value">—</span>
+      </div>
+    </div>
+
+    <!-- ── Screen 3: History ─────────────────────────────────────────── -->
+    <div id="screen-history" class="screen">
+      <div class="screen-header">
+        <div>
+          <h1 class="screen-title">Rebalancing History</h1>
+          <p class="screen-subtitle">Past recommendations and their outcomes</p>
+        </div>
+      </div>
+      <div id="historyContainer">
+        <p class="empty-state">No history yet. Save a recommendation from the Rebalancing screen.</p>
+      </div>
+    </div>
+
+    <!-- ── Screen 4: Edit Plan ───────────────────────────────────────── -->
+    <div id="screen-edit-plan" class="screen">
+      <div class="screen-header">
+        <div>
+          <h1 class="screen-title">Edit Model Portfolio</h1>
+          <p class="screen-subtitle">Adjust target allocation percentages — must total exactly 100%</p>
+        </div>
+      </div>
+
+      <div class="edit-plan-container">
+        <div class="table-wrapper">
+          <table class="data-table" id="editPlanTable">
+            <thead>
+              <tr>
+                <th>Fund ID</th>
+                <th>Fund Name</th>
+                <th>Asset Class</th>
+                <th>Target % </th>
+              </tr>
+            </thead>
+            <tbody id="editPlanTbody">
+              <tr><td colspan="4" class="loading-cell">Loading plan...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="plan-footer">
+          <div class="plan-sum-display">
+            Total: <span id="planSumDisplay" class="sum-ok">0%</span>
+            <span id="planSumNote" class="sum-note">(must be 100%)</span>
+          </div>
+          <div class="plan-actions">
+            <button class="btn btn-secondary" onclick="resetPlanInputs()">Reset</button>
+            <button id="btnSavePlan" class="btn btn-primary" onclick="savePlan()">
+              <span>💾</span> Save & Recalculate
+            </button>
+          </div>
+        </div>
+        <div id="planMsg" class="plan-message hidden"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="{% static 'core/app.js' %}"></script>
+</body>
+</html>
