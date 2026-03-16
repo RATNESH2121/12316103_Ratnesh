@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupNav() {
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', function(e) {
+    item.addEventListener('click', function (e) {
       e.preventDefault();
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       this.classList.add('active');
@@ -35,7 +35,7 @@ function showScreen(name) {
   document.getElementById('screen-' + name).classList.add('active');
   if (name === 'dashboard') loadRebalance();
   if (name === 'holdings') loadHoldings();
-  if (name === 'history')  loadHistory();
+  if (name === 'history') loadHistory();
   if (name === 'edit-plan') loadEditPlan();
 }
 
@@ -92,8 +92,8 @@ async function loadRebalance() {
 
   // Update summary cards
   document.getElementById('cardTotal').textContent = fmt(rebalanceData.total_portfolio);
-  document.getElementById('cardBuy').textContent   = fmt(rebalanceData.total_to_buy);
-  document.getElementById('cardSell').textContent  = fmt(rebalanceData.total_to_sell);
+  document.getElementById('cardBuy').textContent = fmt(rebalanceData.total_to_buy);
+  document.getElementById('cardSell').textContent = fmt(rebalanceData.total_to_sell);
 
   const fresh = rebalanceData.net_cash_needed;
   const freshEl = document.getElementById('cardFresh');
@@ -104,22 +104,22 @@ async function loadRebalance() {
   tbody.innerHTML = '';
   rebalanceData.funds.forEach(f => {
     const action = f.action;
-    const rowClass = {BUY: 'row-buy', SELL: 'row-sell', REVIEW: 'row-review', HOLD: 'row-hold'}[action] || '';
-    const badgeClass = {BUY: 'badge-buy', SELL: 'badge-sell', REVIEW: 'badge-review', HOLD: 'badge-hold'}[action] || '';
-    const icon = {BUY: '▲', SELL: '▼', REVIEW: '⚠', HOLD: '━'}[action] || '';
+    const rowClass = { BUY: 'row-buy', SELL: 'row-sell', REVIEW: 'row-review', HOLD: 'row-hold' }[action] || '';
+    const badgeClass = { BUY: 'badge-buy', SELL: 'badge-sell', REVIEW: 'badge-review', HOLD: 'badge-hold' }[action] || '';
+    const icon = { BUY: '▲', SELL: '▼', REVIEW: '⚠', HOLD: '━' }[action] || '';
 
     let driftHtml = '—';
     if (f.drift !== null) {
       const driftClass = f.drift > 0 ? 'drift-positive' : (f.drift < 0 ? 'drift-negative' : 'drift-zero');
-      const driftSign  = f.drift > 0 ? '+' : '';
+      const driftSign = f.drift > 0 ? '+' : '';
       driftHtml = `<span class="${driftClass}">${driftSign}${f.drift.toFixed(1)}%</span>`;
     }
 
     let amountHtml = '—';
-    if (action === 'BUY')    amountHtml = `<span class="amount-buy">+ ${fmt(f.amount)}</span>`;
-    if (action === 'SELL')   amountHtml = `<span class="amount-sell">- ${fmt(f.amount)}</span>`;
+    if (action === 'BUY') amountHtml = `<span class="amount-buy">+ ${fmt(f.amount)}</span>`;
+    if (action === 'SELL') amountHtml = `<span class="amount-sell">- ${fmt(f.amount)}</span>`;
     if (action === 'REVIEW') amountHtml = `<span class="amount-review">${fmt(f.current_value)}</span>`;
-    if (action === 'HOLD')   amountHtml = `<span style="color:var(--text-muted)">${fmt(f.amount)}</span>`;
+    if (action === 'HOLD') amountHtml = `<span style="color:var(--text-muted)">${fmt(f.amount)}</span>`;
 
     const assetClass = f.asset_class || 'N/A';
 
@@ -159,7 +159,7 @@ async function saveRecommendation() {
 
     const res = await fetch('/api/save_session/', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -168,7 +168,7 @@ async function saveRecommendation() {
     } else {
       showToast('❌ Failed to save. Please try again.', 'error');
     }
-  } catch(e) {
+  } catch (e) {
     showToast('❌ Network error. Please try again.', 'error');
   }
 
@@ -222,8 +222,8 @@ async function loadHistory() {
   container.innerHTML = '';
   data.sessions.forEach(s => {
     const statusClass = {
-      'PENDING':   'status-pending',
-      'APPLIED':   'status-applied',
+      'PENDING': 'status-pending',
+      'APPLIED': 'status-applied',
       'DISMISSED': 'status-dismissed',
     }[s.status] || 'status-pending';
 
@@ -272,7 +272,7 @@ async function loadHistory() {
 async function updateStatus(sessionId, status) {
   const res = await fetch('/api/update_status/', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId, status }),
   });
 
@@ -366,26 +366,32 @@ async function savePlan() {
   try {
     const res = await fetch('/api/update_model_funds/', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ funds: updates }),
     });
 
     const result = await res.json();
 
     if (res.ok) {
-      showPlanMsg('✅ Plan updated! Rebalancing screen will now reflect new allocations.', 'success');
-      showToast('✅ Model portfolio updated successfully!', 'success');
+      showPlanMsg('Plan saved! Switching to Rebalancing screen with updated recommendations...', 'success');
+      showToast('Model portfolio updated! Recalculating...', 'success');
       // Reload original so Reset works correctly
       modelFundsOriginal = updates.map(u => {
         const mf = modelFundsOriginal.find(f => f.fund_id === u.fund_id);
         return { ...mf, allocation_pct: u.allocation_pct };
       });
-      // Trigger rebalance refresh in background
       rebalanceData = null;
+
+      // ← KEY SPEC REQUIREMENT: auto-navigate to Screen 1 with updated recommendations
+      setTimeout(() => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelector('[data-screen="dashboard"]').classList.add('active');
+        showScreen('dashboard');
+      }, 800);
     } else {
       showPlanMsg(`❌ ${result.error}`, 'error');
     }
-  } catch(e) {
+  } catch (e) {
     showPlanMsg('❌ Network error. Please try again.', 'error');
   }
 
