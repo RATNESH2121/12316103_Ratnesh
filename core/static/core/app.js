@@ -6,6 +6,8 @@
 let currentClientId = 'C001';
 let rebalanceData = null;  // latest rebalance result
 let modelFundsOriginal = [];  // for reset
+let sessionSaved = false;  // prevent duplicate saves
+let lastSavedRebalanceHash = null;  // track EXACT saved data
 
 // ─── Init ─────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,24 @@ async function loadRebalance() {
   freshEl.textContent = fresh >= 0 ? fmt(fresh) : ('- ' + fmt(Math.abs(fresh)));
   freshEl.style.color = fresh >= 0 ? 'var(--review-color)' : 'var(--buy-color)';
 
+  const currentHash = JSON.stringify(rebalanceData);
+
+  // Check if we already saved this exact recommendation
+  if (lastSavedRebalanceHash === currentHash) {
+    sessionSaved = true;
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.innerHTML = '<span>✅</span> Saved';
+    btn.style.opacity = '0.7';
+  } else {
+    // Reset save button — new data loaded, allow saving again
+    sessionSaved = false;
+    const btn = document.getElementById('btnSave');
+    btn.disabled = false;
+    btn.innerHTML = '<span>💾</span> Save Recommendation';
+    btn.style.opacity = '1';
+  }
+
   // Build table
   tbody.innerHTML = '';
   rebalanceData.funds.forEach(f => {
@@ -143,6 +163,12 @@ async function loadRebalance() {
 async function saveRecommendation() {
   if (!rebalanceData) return;
 
+  // Guard: prevent saving the same recommendation twice
+  if (sessionSaved) {
+    showToast('Already saved! Change the plan or switch client to create a new recommendation.', 'error');
+    return;
+  }
+
   const btn = document.getElementById('btnSave');
   btn.disabled = true;
   btn.textContent = 'Saving...';
@@ -164,7 +190,14 @@ async function saveRecommendation() {
     });
 
     if (res.ok) {
-      showToast('✅ Recommendation saved to history!', 'success');
+      sessionSaved = true;  // mark this recommendation as saved
+      lastSavedRebalanceHash = JSON.stringify(rebalanceData); // remember exactly what we saved
+      showToast('Recommendation saved to history!', 'success');
+      // Lock the button — cannot save same data again
+      btn.disabled = true;
+      btn.innerHTML = '<span>✅</span> Saved';
+      btn.style.opacity = '0.7';
+      return;  // exit early, skip re-enabling below
     } else {
       showToast('❌ Failed to save. Please try again.', 'error');
     }
@@ -172,8 +205,11 @@ async function saveRecommendation() {
     showToast('❌ Network error. Please try again.', 'error');
   }
 
-  btn.disabled = false;
-  btn.innerHTML = '<span>💾</span> Save Recommendation';
+  // Re-enable button only if save failed
+  if (!sessionSaved) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>💾</span> Save Recommendation';
+  }
 }
 
 // ─── Screen 2: Holdings ────────────────────────────────────────────────────
